@@ -1,6 +1,7 @@
 #define MEM_SIZE 4096
 #define CLOSED 0
 #define OPEN 1
+#define DEBUG 0
 #define malloc(x) mymalloc(x, __FILE__, __LINE__)
 #define free(x) myfree(x, __FILE__, __LINE__)
 

@@ -42,24 +42,26 @@ static char memory[MEM_SIZE];
 void *mymalloc(size_t length, char *file, int line) {
     //1. Input Validity Check
     if(length < 0){
-        printf("Error: attemped to allocate a negative amount of memroy\n");
+        printf("Error: attemped to allocate a negative amount of memory\n");
         return NULL;
     }
     if(length == 0){
         printf("Warning: 0 bytes allocated. No memory allocated\n");
         return NULL;
     }
-    
+    //?printf("Step 1 Complete: %d >= 0\n", (int) length);
     //2. memory intialization check
         //Check to see if the memory array hasn't been initialized
         //This is because we should not have blocks of length 0
+    printf("Step 2 ");
     Metadata *metadata = (Metadata *) memory; 
     if(metadata->length == 0) { //Memory is uninitialized
         metadata->length = MEM_SIZE - sizeof(Metadata);
         metadata->status = OPEN;
-        memory[0] = metadata;
+        //memory[0] = metadata;
+        printf("Complete: Intialized memory\n");
     }
-
+    if(DEBUG) printf("Complete: already intialized memory\n");
     //3. Search memory
         // while iterating through free spaces
         // if length is small enough & metadata says space is free then malloc space for it and mark as closed
@@ -68,49 +70,90 @@ void *mymalloc(size_t length, char *file, int line) {
         //      2) We reach the end of memory without finding a good block
     Metadata *ptr = memory;
     Metadata *prev = NULL;
-    while(ptr < memory+4096 && (ptr->status == CLOSED || (ptr->status == OPEN && ptr->length < (int)length))){
+    if(DEBUG) printf("Step 3 Begin\n");
+    if(DEBUG) printf("Step 3 Boolean Evaluation\n");
+    if(DEBUG) printf("ptr->status is: %d\t ptr->length is: %d\n", ptr->status, ptr->length);
+    if(DEBUG) printf("\t Boolean 1: ptr < memory + MEM_SIZE evaluates to: %d\n", ptr < memory + MEM_SIZE);
+    if(DEBUG) printf("\t Boolean 2: (ptr->status == CLOSED || (ptr->status == OPEN && ptr->length < (int)length)) to: %d\n", (ptr->status == CLOSED || (ptr->status == OPEN && ptr->length < (int)length)));
+    while(ptr < memory + MEM_SIZE && (ptr->status == CLOSED || (ptr->status == OPEN && ptr->length < (int)length))){
         //Merges contiguous free blocks
+        if(DEBUG) printf("\tMade it inside while loop\n");
         prev = ptr;
+        printf("\tMade it first line. Ptr = %p\n", ptr);
         ptr = ptr + sizeof(Metadata) + ptr->length;
-        if(prev->status == OPEN && ptr->status == OPEN){
+        printf("\tMade it second line, Ptr is now = %p\n", ptr);
+        if(ptr < memory + MEM_SIZE && (prev->status == OPEN && ptr->status == OPEN)){
+            printf("\t\tMade it inside if statement\n");
             prev->length += sizeof(Metadata) + ptr->length;
+            printf("\t\tFirst line if statement reached\n");
             ptr = prev;
+            printf("\tSecond line if statement reached\n");
         }
     }
-        
+
+    if(DEBUG) printf("Determining if we have enough space...\n");
+    if(DEBUG) printf("ptr value is: %p\tmemory+MEM_SIZE is: %p\n", ptr, memory+MEM_SIZE);
     //4. Determine if we have enough space
-    if(ptr > memory + 4096){
-        printf("Error: Not enough memory to allocate requested amount of data");
+    if(ptr > memory + MEM_SIZE) {
+        printf("Error: Not enough memory to allocate requested amount of data\n");
         return NULL;
     }
-    
+    if(DEBUG) printf("Step 5: Partitioning and merging continuous blocks\n");
     //5. Partition
     metadata = ptr;     //*Recycling previous metadata ptr that is no longer in use as reference to the block we want to allocate data to
     //5a. Merge contiguous free blocks (again)
-    while(ptr < memory + 4096 && ptr->status == OPEN){ 
+    while(ptr < memory + MEM_SIZE && ptr->status == OPEN){ 
+        if(DEBUG) printf("\tMade it inside while loop 5a\n");
         prev = ptr;
         ptr = ptr + sizeof(Metadata) + ptr->length;
-        if(prev->status == OPEN && ptr->status == OPEN){
+        if(ptr < memory + MEM_SIZE && (prev->status == OPEN && ptr->status == OPEN)){
             prev->length += sizeof(Metadata) + ptr->length;
             ptr = prev;
         }
     }
+    if(DEBUG) printf("Step 5b: Calculating free space left\n");
     //5b. Calculate Free space left
     int openBytesLeft = metadata->length - (int)length;
     int canPart = openBytesLeft > sizeof(Metadata);
-
+    
+    if(DEBUG) printf("Open bytes left: %d\n", openBytesLeft);
+    if(DEBUG) printf("Can Partition: %d\n", canPart);
+    if(DEBUG) printf("Step 5c: Patitioning if necessary\n");
     //5c + 5d. Partition if necessary
-    if(canPart){
+    if(canPart) {
         metadata->length = (int)length;
         ptr = metadata + sizeof(Metadata) + metadata->length;
         ptr->status = OPEN;
         ptr->length = openBytesLeft - sizeof(Metadata);
     }
-    
+    if(DEBUG) printf("Step 5e: Returning\n");
     //5e. Return statement
+    metadata->status = CLOSED;
     return metadata + sizeof(metadata);
 }
 
 void myfree(void *ptr, char *file, int line) {
+    if(DEBUG) printf("Bool1 : %d\t Bool2: %d\n", ptr < memory + sizeof(Metadata), ptr > memory + MEM_SIZE);
+    if(ptr < memory + sizeof(Metadata) || ptr > memory + MEM_SIZE) { // given ptr is outside of memory block
+        printf("\tError: ptr is outside of memory block\n");
+        return;
+    }
+    Metadata *metadata = (Metadata *) ptr - sizeof(Metadata);
+    if((metadata->status != OPEN && metadata->status != CLOSED) || metadata->length < 1 || metadata->length > MEM_SIZE) {
+        printf("\tError: Invalid ptr found\n");
+        return;
+    }
+    // assuming valid metadata found
 
+    if(DEBUG) printf("Checking if metadata is closed, if not returning...\n");
+    if(metadata->status == OPEN) {
+        // metadata found but its open, so nothing to free
+        if(DEBUG) printf("\tError: memory is already freed\n");
+        return;
+    }
+
+    // assuming valid, closed metadata found
+    metadata->status = OPEN;
+    /*if(DEBUG)*/ printf("Returning, metadata successfully marked as open\n");
+    return;
 }

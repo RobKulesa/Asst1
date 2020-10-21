@@ -5,6 +5,12 @@
  * Runs workloads, calculates and output mean time for each workload
 */
 int main(int argc, char** argv) {
-    char *ptr = malloc(64);
+    int i;
+    for(i = 0; i < 50; i++){
+        printf("ITERATION %d\n", i);
+        char *ptr = malloc(4087);
+        free(ptr);
+    }
+    
     return 0;
 }
