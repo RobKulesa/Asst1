@@ -14,15 +14,18 @@ void *mymalloc(size_t length, char *file, int line) {
         metadata->length = MEM_SIZE - sizeof(Metadata);
         metadata->status = OPEN;
         memory[0] = metadata;
-        // size of metadata + malloc'd length = start of next block
-        // memory is empty
-        printf("hi uh our memory is empty yo\n");
-    } else {
-        // memory has first metadata
-        printf("found metadata at beginning of memory with length %d with status %d\n", test->length, test->status);
     }
-
-    
+    // while iterating through free spaces
+    // if length is small enough & metadata says space is free then malloc space for it and mark as closed
+    // While loop stops for following 2 conditions: 1) We found free block big enough for metadata; 2) We reach the end of memory without finding a good block
+    Metadata *ptr = memory;
+    while((ptr->status == CLOSED || (ptr->status == OPEN && ptr->length < (int)length)) && ptr < memory+4096){
+        ptr = ptr + sizeof(Metadata) + ptr->length;
+    }
+    if(ptr > memory + 4096){
+        //error because space isn't big enough
+    }
+    //If we made it this far, we are fine
     return NULL;
 }
 
