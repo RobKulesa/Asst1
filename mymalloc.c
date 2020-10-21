@@ -4,29 +4,111 @@
 
 static char memory[MEM_SIZE];
 
+
+
+/*
+ * Function Description: mymalloc()
+ *      1. Check input validity
+ *          a. Any length input < 0 is invalid
+ *          b. Any length == 0 returns NULL
+ *          b. If an invalid input is detected, return NULL
+ *      2. Check to see if the memory array is initialized
+ *          a. If not, initialize the first metadata
+ *          b. If so, continue
+ *      3. Traverse through memory to look for a free block big enough to hold data of length size_t
+ *          a. If contiguous blocks are found as we traverse, we merge them together by altering the previous metadata's length
+ *          b. The loop will iterate another time if:
+ *              i.   The ptr in question is in bounds 
+ *              ii.  The ptr in question is closed or is free but too small
+ *      4. Decide if we have enough space
+ *          a. If the ptr is out of bounds, we do not have space for the data and ERROR
+ *          b. If the ptr is in bounds, then we partition this data
+ *  ->  5. Partition the free block in question
+ *          //! NOTE
+ *           - If we have made it this far into the code, then ptr is pointing to a free block big enough for our data
+ *           - Partitioning the data requires that we separate the current free block into a CLOSED block and an OPEN block (if possible)
+ *              i.   We check if this is possible by merging any contiguous free blocks that occur after the current position of ptr
+ *              ii.  We do this because in the case where (There is a OPEN block after the current position of ptr) && 
+ *                   (The current OPEN block doesn't have enough space to allocate a metadata for the free block)
+ *              iii. In the case above, we lose waste a few bytes if we don't merge contiguous blocks that occur after the OPEN block at the current position of ptr
+ *          //! ENDNOTE
+ *          a. We merge contiguous free blocks that occur after the current position of pointer
+ *          b. We calculate if we have space to partition into 1 CLOSED block and 1 OPEN block
+ *          c. Based on calculation in 4b, we change (or don't) the length value of ptr
+ *          d. Based on calculation in 4b, we may or may not insert metadata to correspond to an OPEN block that occurs after the current position of ptr
+ *          e. Return the current position of ptr + sizeof(Metadata)
+ *              i. This is because we don't want to return the metadata itself. Rather, we want to return the pointer to the first block of data
+ */
 void *mymalloc(size_t length, char *file, int line) {
-    if(length == 0) return NULL;
-    // return error if negative length is given or a length greater than MEM_SIZE
-    Metadata *metadata = (Metadata *) memory;
-    //Check to see if the memory array hasn't been initialized
-    //This is because we should not have blocks of length 0
+    //1. Input Validity Check
+    if(length < 0){
+        printf("Error: attemped to allocate a negative amount of memroy\n");
+        return NULL;
+    }
+    if(length == 0){
+        printf("Warning: 0 bytes allocated. No memory allocated\n");
+        return NULL;
+    }
+    
+    //2. memory intialization check
+        //Check to see if the memory array hasn't been initialized
+        //This is because we should not have blocks of length 0
+    Metadata *metadata = (Metadata *) memory; 
     if(metadata->length == 0) { //Memory is uninitialized
         metadata->length = MEM_SIZE - sizeof(Metadata);
         metadata->status = OPEN;
         memory[0] = metadata;
     }
-    // while iterating through free spaces
-    // if length is small enough & metadata says space is free then malloc space for it and mark as closed
-    // While loop stops for following 2 conditions: 1) We found free block big enough for metadata; 2) We reach the end of memory without finding a good block
+
+    //3. Search memory
+        // while iterating through free spaces
+        // if length is small enough & metadata says space is free then malloc space for it and mark as closed
+        // While loop stops for following 2 conditions: 
+        //      1) We found free block big enough for metadata; 
+        //      2) We reach the end of memory without finding a good block
     Metadata *ptr = memory;
-    while((ptr->status == CLOSED || (ptr->status == OPEN && ptr->length < (int)length)) && ptr < memory+4096){
+    Metadata *prev = NULL;
+    while(ptr < memory+4096 && (ptr->status == CLOSED || (ptr->status == OPEN && ptr->length < (int)length))){
+        //Merges contiguous free blocks
+        prev = ptr;
         ptr = ptr + sizeof(Metadata) + ptr->length;
+        if(prev->status == OPEN && ptr->status == OPEN){
+            prev->length += sizeof(Metadata) + ptr->length;
+            ptr = prev;
+        }
     }
+        
+    //4. Determine if we have enough space
     if(ptr > memory + 4096){
-        //error because space isn't big enough
+        printf("Error: Not enough memory to allocate requested amount of data");
+        return NULL;
     }
-    //If we made it this far, we are fine
-    return NULL;
+    
+    //5. Partition
+    metadata = ptr;     //*Recycling previous metadata ptr that is no longer in use as reference to the block we want to allocate data to
+    //5a. Merge contiguous free blocks (again)
+    while(ptr < memory + 4096 && ptr->status == OPEN){ 
+        prev = ptr;
+        ptr = ptr + sizeof(Metadata) + ptr->length;
+        if(prev->status == OPEN && ptr->status == OPEN){
+            prev->length += sizeof(Metadata) + ptr->length;
+            ptr = prev;
+        }
+    }
+    //5b. Calculate Free space left
+    int openBytesLeft = metadata->length - (int)length;
+    int canPart = openBytesLeft > sizeof(Metadata);
+
+    //5c + 5d. Partition if necessary
+    if(canPart){
+        metadata->length = (int)length;
+        ptr = metadata + sizeof(Metadata) + metadata->length;
+        ptr->status = OPEN;
+        ptr->length = openBytesLeft - sizeof(Metadata);
+    }
+    
+    //5e. Return statement
+    return metadata + sizeof(metadata);
 }
 
 void myfree(void *ptr, char *file, int line) {
