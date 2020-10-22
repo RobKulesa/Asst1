@@ -7,10 +7,9 @@
 
 void *mymalloc(size_t length, char *file, int line);
 void myfree(void *ptr, char *file, int line);
-
+Metadata *incrementPointer(Metadata *ptr, int n);
 
 typedef struct Metadata {
     int status;
     int length;
-    // Metadata* prev; //Optional?????
 } Metadata;

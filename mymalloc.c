@@ -1,10 +1,21 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <errno.h>
 #include "mymalloc.h"
 
 static char memory[MEM_SIZE];
 
 
+/*
+ * Function: incrementPointer()
+ * Inputs: the amount of bytes to increment a pointer by in bytes
+ */
+
+Metadata *incrementPointer(Metadata *ptr, int n) {
+    char *ptr2 = (char *)ptr;
+    ptr2 += n;
+    return (Metadata *)ptr2;
+}
 
 /*
  * Function Description: mymalloc()
@@ -49,17 +60,16 @@ void *mymalloc(size_t length, char *file, int line) {
         printf("Warning: 0 bytes allocated. No memory allocated\n");
         return NULL;
     }
-    //?printf("Step 1 Complete: %d >= 0\n", (int) length);
     //2. memory intialization check
         //Check to see if the memory array hasn't been initialized
         //This is because we should not have blocks of length 0
-    printf("Step 2 ");
+    if(DEBUG) printf("Step 2 ");
     Metadata *metadata = (Metadata *) memory; 
     if(metadata->length == 0) { //Memory is uninitialized
         metadata->length = MEM_SIZE - sizeof(Metadata);
         metadata->status = OPEN;
         //memory[0] = metadata;
-        printf("Complete: Intialized memory\n");
+        if(DEBUG) printf("Complete: Intialized memory\n");
     }
     if(DEBUG) printf("Complete: already intialized memory\n");
     //3. Search memory
@@ -68,33 +78,33 @@ void *mymalloc(size_t length, char *file, int line) {
         // While loop stops for following 2 conditions: 
         //      1) We found free block big enough for metadata; 
         //      2) We reach the end of memory without finding a good block
-    Metadata *ptr = memory;
+    Metadata *ptr = (Metadata *) memory;
     Metadata *prev = NULL;
     if(DEBUG) printf("Step 3 Begin\n");
     if(DEBUG) printf("Step 3 Boolean Evaluation\n");
     if(DEBUG) printf("ptr->status is: %d\t ptr->length is: %d\n", ptr->status, ptr->length);
-    if(DEBUG) printf("\t Boolean 1: ptr < memory + MEM_SIZE evaluates to: %d\n", ptr < memory + MEM_SIZE);
+    if(DEBUG) printf("\t Boolean 1: ptr < memory + MEM_SIZE evaluates to: %d\n", ptr < (Metadata *) (memory + MEM_SIZE));
     if(DEBUG) printf("\t Boolean 2: (ptr->status == CLOSED || (ptr->status == OPEN && ptr->length < (int)length)) to: %d\n", (ptr->status == CLOSED || (ptr->status == OPEN && ptr->length < (int)length)));
-    while(ptr < memory + MEM_SIZE && (ptr->status == CLOSED || (ptr->status == OPEN && ptr->length < (int)length))){
+    while(ptr < (Metadata *) (memory + MEM_SIZE) && (ptr->status == CLOSED || (ptr->status == OPEN && ptr->length < (int)length))){
         //Merges contiguous free blocks
         if(DEBUG) printf("\tMade it inside while loop\n");
         prev = ptr;
-        printf("\tMade it first line. Ptr = %p\n", ptr);
-        ptr = ptr + sizeof(Metadata) + ptr->length;
-        printf("\tMade it second line, Ptr is now = %p\n", ptr);
-        if(ptr < memory + MEM_SIZE && (prev->status == OPEN && ptr->status == OPEN)){
-            printf("\t\tMade it inside if statement\n");
+        if(DEBUG) printf("\tMade it first line. Ptr = %p\n", ptr);
+        ptr = incrementPointer(ptr, sizeof(Metadata) + ptr->length);
+        if(DEBUG) printf("\tMade it second line, Ptr is now = %p\n", ptr);
+        if(ptr < (Metadata *) (memory + MEM_SIZE) && (prev->status == OPEN && ptr->status == OPEN)){
+            if(DEBUG) printf("\t\tMade it inside if statement\n");
             prev->length += sizeof(Metadata) + ptr->length;
-            printf("\t\tFirst line if statement reached\n");
+            if(DEBUG) printf("\t\tFirst line if statement reached\n");
             ptr = prev;
-            printf("\tSecond line if statement reached\n");
+            if(DEBUG) printf("\tSecond line if statement reached\n");
         }
     }
 
     if(DEBUG) printf("Determining if we have enough space...\n");
     if(DEBUG) printf("ptr value is: %p\tmemory+MEM_SIZE is: %p\n", ptr, memory+MEM_SIZE);
     //4. Determine if we have enough space
-    if(ptr > memory + MEM_SIZE) {
+    if(ptr >= (Metadata *) (memory + MEM_SIZE)) {
         printf("Error: Not enough memory to allocate requested amount of data\n");
         return NULL;
     }
@@ -102,11 +112,11 @@ void *mymalloc(size_t length, char *file, int line) {
     //5. Partition
     metadata = ptr;     //*Recycling previous metadata ptr that is no longer in use as reference to the block we want to allocate data to
     //5a. Merge contiguous free blocks (again)
-    while(ptr < memory + MEM_SIZE && ptr->status == OPEN){ 
+    while(ptr < (Metadata *) (memory + MEM_SIZE) && ptr->status == OPEN){ 
         if(DEBUG) printf("\tMade it inside while loop 5a\n");
         prev = ptr;
-        ptr = ptr + sizeof(Metadata) + ptr->length;
-        if(ptr < memory + MEM_SIZE && (prev->status == OPEN && ptr->status == OPEN)){
+        ptr = incrementPointer(ptr, sizeof(Metadata) + ptr->length);
+        if(ptr < (Metadata *) (memory + MEM_SIZE) && (prev->status == OPEN && ptr->status == OPEN)){
             prev->length += sizeof(Metadata) + ptr->length;
             ptr = prev;
         }
@@ -122,38 +132,48 @@ void *mymalloc(size_t length, char *file, int line) {
     //5c + 5d. Partition if necessary
     if(canPart) {
         metadata->length = (int)length;
-        ptr = metadata + sizeof(Metadata) + metadata->length;
+        ptr = incrementPointer(metadata, sizeof(Metadata) + metadata->length);
         ptr->status = OPEN;
         ptr->length = openBytesLeft - sizeof(Metadata);
     }
     if(DEBUG) printf("Step 5e: Returning\n");
     //5e. Return statement
     metadata->status = CLOSED;
-    return metadata + sizeof(metadata);
+    return incrementPointer(metadata, sizeof(Metadata));
 }
-
+/**
+ * Function Description: myfree()
+ *     1. Exit if given ptr is outside of the memory block.
+ *     2. Exit if ptr - sizeof(Metadata) points to a valid metadata struct.
+ *     3. Exit if valid metadata struct is closed.
+ *     4. At this point metadata struct is open and valid, so we free it by setting status to OPEN and return.
+ */
 void myfree(void *ptr, char *file, int line) {
-    if(DEBUG) printf("Bool1 : %d\t Bool2: %d\n", ptr < memory + sizeof(Metadata), ptr > memory + MEM_SIZE);
-    if(ptr < memory + sizeof(Metadata) || ptr > memory + MEM_SIZE) { // given ptr is outside of memory block
+    if(DEBUG) printf("Bool1 : %d\t Bool2: %d\n", ptr < (void *) (memory + sizeof(Metadata)), ptr > (void *) (memory + MEM_SIZE));
+
+    if(ptr < (void *) (memory + sizeof(Metadata)) || ptr > (void *) (memory + MEM_SIZE)) { // given ptr is outside of memory block
         printf("\tError: ptr is outside of memory block\n");
         return;
     }
-    Metadata *metadata = (Metadata *) ptr - sizeof(Metadata);
-    if((metadata->status != OPEN && metadata->status != CLOSED) || metadata->length < 1 || metadata->length > MEM_SIZE) {
+    // jumps to where metadata should be given address of data
+    Metadata *metadata = (Metadata *) (ptr - sizeof(Metadata));
+    if((metadata->status != OPEN && metadata->status != CLOSED) || metadata->length < 1 || metadata->length > MEM_SIZE) { // check if this is a valid metadata ptr
         printf("\tError: Invalid ptr found\n");
         return;
     }
-    // assuming valid metadata found
+
+    // assuming valid metadata found, but could still be OPEN
 
     if(DEBUG) printf("Checking if metadata is closed, if not returning...\n");
     if(metadata->status == OPEN) {
         // metadata found but its open, so nothing to free
-        if(DEBUG) printf("\tError: memory is already freed\n");
+        printf("\tError: memory is already freed\n");
         return;
     }
 
     // assuming valid, closed metadata found
+
     metadata->status = OPEN;
-    /*if(DEBUG)*/ printf("Returning, metadata successfully marked as open\n");
+    if(DEBUG) printf("Returning, metadata successfully marked as open\n");
     return;
 }
