@@ -93,7 +93,7 @@ void *mymalloc(size_t length, char *file, int line) {
         ptr = incrementPointer(ptr, sizeof(Metadata) + ptr->length);
         if(DEBUG) printf("\tMade it second line, Ptr is now = %p\n", ptr);
         if(ptr < (Metadata *) (memory + MEM_SIZE) && (prev->status == OPEN && ptr->status == OPEN)){
-            if(DEBUG) printf("\t\tMade it inside if statement\n");
+            if(DEBUG) printf("\t\tPerforming Merge\n");
             prev->length += sizeof(Metadata) + ptr->length;
             if(DEBUG) printf("\t\tFirst line if statement reached\n");
             ptr = prev;
@@ -136,7 +136,7 @@ void *mymalloc(size_t length, char *file, int line) {
         ptr->status = OPEN;
         ptr->length = openBytesLeft - sizeof(Metadata);
     }
-    if(DEBUG) printf("Step 5e: Returning\n");
+    if(DEBUG) printf("\tStep 5e: Returning\n");
     //5e. Return statement
     metadata->status = CLOSED;
     return incrementPointer(metadata, sizeof(Metadata));
