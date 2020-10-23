@@ -10,7 +10,7 @@
 */
 int main(int argc, char** argv) {
     int i, j;
-    long long int timeA = 0, timeB = 0, timeC = 0, timeD = 0;// timeE = 0;
+    long long int timeA = 0, timeB = 0, timeC = 0, timeD = 0, timeE = 0;
     for(j = 0; j < (int) CYCLES; ++j) {
         struct timeval start;
         struct timeval end;
@@ -65,9 +65,15 @@ int main(int argc, char** argv) {
         gettimeofday(&end, NULL);
         timeC += (end.tv_sec - start.tv_sec)*pow(10, 6) + end.tv_usec - start.tv_usec;
        //printf("Task C Complete\n");
+        
+        void *a;
+        void *b;
+        void *c;
+        void *d;
+
 
         //D.
-        // Workload description: Can malloc automatically merge free blocks?
+        // Workload description: Can malloc automatically merge free blocks as it finds them?
         gettimeofday(&start, NULL);
         for(int i = 0; i < 50; i++){
             //printf("Iteraation: %d\n", i);
@@ -76,13 +82,13 @@ int main(int argc, char** argv) {
                 //Bytes used by metadata: 32*4 = 32
                 //Total Bytes: 4064 + 32 = 4096
             //printf("**Mallocing a\n");
-            void *a = malloc(1016);
+            a = malloc(1016);
             //printf("**Mallocing a\n");
-            void *b = malloc(1016);
+            b = malloc(1016);
             //printf("**Mallocing a\n");
-            void *c = malloc(1016);
+            c = malloc(1016);
             //printf("**Mallocing a\n");
-            void *d = malloc(1016);
+            d = malloc(1016);
             //Free a and b. This should leave us with 2032 + 16 = 2048 open bytes
             free(a);
             free(b);
@@ -110,11 +116,27 @@ int main(int argc, char** argv) {
         }
         gettimeofday(&end, NULL);
         timeD += (end.tv_sec - start.tv_sec)*pow(10, 6) + end.tv_usec - start.tv_usec;
+
+        //E
+        gettimeofday(&start, NULL);
+        for(i = 0; i < 50; i++){
+            a = malloc(2040);
+            b = malloc(2040);
+            free(a);
+            free(b);
+            a = malloc(2035);
+            b = malloc(2045);
+            free(a);
+            free(b);
+        }
+        gettimeofday(&end, NULL);
+        timeE += (end.tv_sec - start.tv_sec)*pow(10, 6) + end.tv_usec - start.tv_usec;
     }
     printf("Mean Time to execute workload A: %f microseconds\n", (timeA/CYCLES));
     printf("Mean Time to execute workload B: %f microseconds\n", (timeB/CYCLES));
     printf("Mean Time to execute workload C: %f microseconds\n", (timeC/CYCLES));
     printf("Mean Time to execute workload D: %f microseconds\n", (timeD/CYCLES));
+    printf("Mean Time to execute workload E: %f microseconds\n", (timeE/CYCLES));
     //printf("Mean Time to execute workload D: %f microseconds\n", (timeD/CYCLES));
     //printf("Mean Time to execute workload E: %f microseconds\n", (timeE/CYCLES));
     return 0;

@@ -119,6 +119,7 @@ void *mymalloc(size_t length, char *file, int line) {
         if(ptr < (Metadata *) (memory + MEM_SIZE) && (prev->status == OPEN && ptr->status == OPEN)){
             prev->length += sizeof(Metadata) + ptr->length;
             ptr = prev;
+            if(DEBUG) printf("\tMerged Data Here\n");
         }
     }
     if(DEBUG) printf("Step 5b: Calculating free space left\n");
@@ -136,7 +137,7 @@ void *mymalloc(size_t length, char *file, int line) {
         ptr->status = OPEN;
         ptr->length = openBytesLeft - sizeof(Metadata);
     }
-    if(DEBUG) printf("\tStep 5e: Returning\n");
+    if(DEBUG) printf("\tStep 5e: Returning address of size %d\n", (int) length);
     //5e. Return statement
     metadata->status = CLOSED;
     return incrementPointer(metadata, sizeof(Metadata));
