@@ -126,8 +126,8 @@ int main(int argc, char** argv) {
             free(b);
             a = malloc(2035);
             b = malloc(2045);
-            free(a);
             free(b);
+            free(a);
         }
         gettimeofday(&end, NULL);
         timeE += (end.tv_sec - start.tv_sec)*pow(10, 6) + end.tv_usec - start.tv_usec;
@@ -137,7 +137,5 @@ int main(int argc, char** argv) {
     printf("Mean Time to execute workload C: %f microseconds\n", (timeC/CYCLES));
     printf("Mean Time to execute workload D: %f microseconds\n", (timeD/CYCLES));
     printf("Mean Time to execute workload E: %f microseconds\n", (timeE/CYCLES));
-    //printf("Mean Time to execute workload D: %f microseconds\n", (timeD/CYCLES));
-    //printf("Mean Time to execute workload E: %f microseconds\n", (timeE/CYCLES));
     return 0;
 }

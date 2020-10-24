@@ -53,11 +53,11 @@ Metadata *incrementPointer(Metadata *ptr, int n) {
 void *mymalloc(size_t length, char *file, int line) {
     //1. Input Validity Check
     if(length < 0){
-        printf("Error: attemped to allocate a negative amount of memory\n");
+        printf("Error: attemped to allocate a negative amount of memory (%s, %d)\n", file, line);
         return NULL;
     }
     if(length == 0){
-        printf("Warning: 0 bytes allocated. No memory allocated\n");
+        printf("Warning: 0 bytes allocated. No memory allocated (%s, %d)\n", file, line);
         return NULL;
     }
     //2. memory intialization check
@@ -105,7 +105,7 @@ void *mymalloc(size_t length, char *file, int line) {
     if(DEBUG) printf("ptr value is: %p\tmemory+MEM_SIZE is: %p\n", ptr, memory+MEM_SIZE);
     //4. Determine if we have enough space
     if(ptr >= (Metadata *) (memory + MEM_SIZE)) {
-        printf("Error: Not enough memory to allocate requested amount of data\n");
+        printf("Error: Not enough memory to allocate requested amount of data (%s, %d)\n", file, line);
         return NULL;
     }
     if(DEBUG) printf("Step 5: Partitioning and merging continuous blocks\n");
@@ -153,13 +153,13 @@ void myfree(void *ptr, char *file, int line) {
     if(DEBUG) printf("Bool1 : %d\t Bool2: %d\n", ptr < (void *) (memory + sizeof(Metadata)), ptr > (void *) (memory + MEM_SIZE));
 
     if(ptr < (void *) (memory + sizeof(Metadata)) || ptr > (void *) (memory + MEM_SIZE)) { // given ptr is outside of memory block
-        printf("\tError: ptr is outside of memory block\n");
+        printf("\tError: ptr is outside of memory block (%s, %d)\n", file, line);
         return;
     }
     // jumps to where metadata should be given address of data
     Metadata *metadata = (Metadata *) (ptr - sizeof(Metadata));
     if((metadata->status != OPEN && metadata->status != CLOSED) || metadata->length < 1 || metadata->length > MEM_SIZE) { // check if this is a valid metadata ptr
-        printf("\tError: Invalid ptr found\n");
+        printf("\tError: Invalid ptr found (%s, %d)\n", file, line);
         return;
     }
 
@@ -168,7 +168,7 @@ void myfree(void *ptr, char *file, int line) {
     if(DEBUG) printf("Checking if metadata is closed, if not returning...\n");
     if(metadata->status == OPEN) {
         // metadata found but its open, so nothing to free
-        printf("\tError: memory is already freed\n");
+        printf("\tError: memory is already freed (%s, %d)\n", file, line);
         return;
     }
 
